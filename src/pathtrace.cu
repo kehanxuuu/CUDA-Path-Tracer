@@ -5,6 +5,7 @@
 #include <thrust/random.h>
 #include <thrust/remove.h>
 #include <thrust/device_ptr.h>
+#include <thrust/sort.h>
 
 #include "sceneStructs.h"
 #include "scene.h"
@@ -217,6 +218,7 @@ __global__ void computeIntersections(
 		if (hit_geom_index == -1)
 		{
 			intersections[path_index].t = -1.0f;
+			intersections[path_index].materialId = -1;
 		}
 		else
 		{
@@ -317,6 +319,13 @@ __global__ void finalGather(int nPaths, glm::vec3* image, PathSegment* iteration
 	}
 }
 
+
+struct CompareMaterialID {
+	__host__ __device__ bool operator() (const ShadeableIntersection& intersect1, const ShadeableIntersection& intersect2) {
+		return intersect1.materialId < intersect2.materialId;
+	}
+};
+
 struct ValidPaths {
 	__host__ __device__ bool operator() (const PathSegment& segment) {
 		return segment.throughput != glm::vec3(0.0f) && segment.remainingBounces > 0;
@@ -408,6 +417,10 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 		checkCUDAError("trace one bounce");
 		cudaDeviceSynchronize();
 
+		if (guiData != NULL && guiData->SortMaterial) {
+			thrust::sort_by_key(thrust::device, dev_intersections, dev_intersections + num_paths, dev_paths, CompareMaterialID());
+		}
+
 		// TODO:
 		// --- Shading Stage ---
 		// Shade path segments based on intersections and generate new rays by
@@ -417,7 +430,7 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 	  // TODO: compare between directly shading the path segments and shading
 	  // path segments that have been reshuffled to be contiguous in memory.
 
-		// shadeFakeMaterial, shadeAndSampleSurface
+		// prev: shadeFakeMaterial
 		shadeAndSampleSurface << <numblocksPathSegmentTracing, blockSize1d >> > (
 			iter,
 			num_paths,

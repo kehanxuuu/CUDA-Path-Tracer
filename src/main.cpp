@@ -107,6 +107,11 @@ void saveImage() {
 }
 
 void runCuda() {
+	if (guiData->SortMaterialPrev != guiData->SortMaterial) {
+		iteration = 0;
+		guiData->SortMaterialPrev = guiData->SortMaterial;
+	}
+
 	if (camchanged) {
 		iteration = 0;
 		Camera& cam = renderState->camera;
