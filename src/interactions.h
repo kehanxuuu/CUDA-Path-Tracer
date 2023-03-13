@@ -69,11 +69,41 @@ glm::vec3 calculateRandomDirectionInHemisphere(
 __host__ __device__
 void scatterRay(
         PathSegment & pathSegment,
-        glm::vec3 intersect,
+        glm::vec3 intersect, // position
         glm::vec3 normal,
-        const Material &m,
+        const Material &mat,
         thrust::default_random_engine &rng) {
     // TODO: implement this.
     // A basic implementation of pure-diffuse shading will just call the
     // calculateRandomDirectionInHemisphere defined above.
+    if (mat.emittance > 0.0f) {
+        pathSegment.radiance += pathSegment.throughput * mat.emittance;
+    }
+
+    glm::vec3 inDir = -pathSegment.ray.direction; // point out towards the surface
+
+    if (!mat.hasReflective && !mat.hasRefractive) {
+        // ideally diffuse
+        glm::vec3 outDir = calculateRandomDirectionInHemisphere(normal, rng);
+        pathSegment.ray = makeOffsetedRay(intersect, outDir);
+        pathSegment.throughput *= mat.color;
+        pathSegment.remainingBounces -= 1;
+    }
+    else if (mat.hasReflective && !mat.hasRefractive) {
+        // reflect only
+        glm::vec3 outDir = glm::reflect(-inDir, normal); // 2 * glm::dot(inDir, normal) * normal - inDir
+        pathSegment.ray = makeOffsetedRay(intersect, outDir);
+        pathSegment.throughput *= mat.specular.color; // todo: temporary, to change
+        pathSegment.remainingBounces -= 1;
+    }
+    else if (mat.hasReflective && mat.hasRefractive) {
+        // reflect & refract, todo: tmp, maybe do some print out
+        pathSegment.throughput = glm::vec3(0.0f);
+        pathSegment.remainingBounces = 0;
+    }
+    else {
+        // throw error, todo: tmp
+        pathSegment.throughput = glm::vec3(0.0f);
+        pathSegment.remainingBounces = 0;
+    }
 }

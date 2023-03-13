@@ -28,6 +28,14 @@ __host__ __device__ glm::vec3 getPointOnRay(Ray r, float t) {
     return r.origin + (t - .0001f) * glm::normalize(r.direction);
 }
 
+__host__ __device__ inline Ray makeRay(glm::vec3 ori, glm::vec3 dir) {
+    return { ori, dir };
+}
+
+__host__ __device__ inline Ray makeOffsetedRay(glm::vec3 ori, glm::vec3 dir) {
+    return { ori + dir * 1e-5f, dir };
+}
+
 /**
  * Multiplies a mat4 and a vec4 and returns a vec3 clipped from the vec4.
  */
