@@ -46,6 +46,8 @@ int main(int argc, char** argv) {
 
 	//Create Instance for ImGUIData
 	guiData = new GuiDataContainer();
+	guiData->MaxRayDepth = scene->state.traceDepth;
+	guiData->MaxRayDepthPrev = guiData->MaxRayDepth;
 
 	// Set up camera stuff from loaded path tracer settings
 	iteration = 0;
@@ -107,9 +109,11 @@ void saveImage() {
 }
 
 void runCuda() {
-	if (guiData->SortMaterialPrev != guiData->SortMaterial) {
+	if (guiData->SortMaterialPrev != guiData->SortMaterial || 
+		guiData->CacheFirstBounceIsectPrev != guiData->CacheFirstBounceIsect ||
+		guiData->MaxRayDepthPrev != guiData->MaxRayDepth
+	) {
 		iteration = 0;
-		guiData->SortMaterialPrev = guiData->SortMaterial;
 	}
 
 	if (camchanged) {
@@ -137,6 +141,12 @@ void runCuda() {
 
 	if (iteration == 0) {
 		pathtraceFree();
+
+		guiData->SortMaterialPrev = guiData->SortMaterial;
+		guiData->CacheFirstBounceIsectPrev = guiData->CacheFirstBounceIsect;
+		guiData->MaxRayDepthPrev = guiData->MaxRayDepth;
+		scene->state.traceDepth = guiData->MaxRayDepth;
+
 		pathtraceInit(scene);
 	}
 

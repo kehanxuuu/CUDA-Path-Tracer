@@ -17,10 +17,20 @@
 class GuiDataContainer
 {
 public:
-    GuiDataContainer() : TracedDepth(0), SortMaterial(true), SortMaterialPrev(true) {}
+    GuiDataContainer() : TracedDepth(0), SortMaterial(false), CacheFirstBounceIsect(false), MaxRayDepth(1) {
+        SortMaterialPrev = SortMaterial;
+        CacheFirstBounceIsectPrev = CacheFirstBounceIsect;
+        MaxRayDepthPrev = MaxRayDepth;
+    }
+
     int TracedDepth;
     bool SortMaterial;
+    bool CacheFirstBounceIsect;
+    int MaxRayDepth;
+
     bool SortMaterialPrev;
+    bool CacheFirstBounceIsectPrev;
+    int MaxRayDepthPrev;
 };
 
 namespace utilityCore {

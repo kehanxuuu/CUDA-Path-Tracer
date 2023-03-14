@@ -197,11 +197,14 @@ void RenderImGui()
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 
-	bool show_demo_window = true;
-	bool show_another_window = false;
-	ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-	static float f = 0.0f;
-	static int counter = 0;
+	// bool show_demo_window = true;
+	// bool show_another_window = false;
+	// ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+	// static float f = 0.0f;
+	// static int counter = 0;
+	static bool UI_hide = false;
+
+	ImGui::SetNextWindowPos(UI_hide ? ImVec2(-1000.f, -1000.f) : ImVec2(0.0f, 0.0f));
 
 	ImGui::Begin("Path Tracer Analytics and Options");                  // Create a window called "Hello, world!" and append into it.
 	
@@ -217,9 +220,17 @@ void RenderImGui()
 	//	counter++;
 	//ImGui::SameLine();
 	//ImGui::Text("counter = %d", counter);
+
 	ImGui::Text("Traced Depth %d", imguiData->TracedDepth);
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 	ImGui::Checkbox("Sort Material", &imguiData->SortMaterial);
+	ImGui::Checkbox("Cache First Bounce Intersection", &imguiData->CacheFirstBounceIsect);
+
+	ImGui::Text("press H to hide GUI completely.");
+    if (ImGui::IsKeyPressed('H')) {
+        UI_hide = !UI_hide;
+    }
+
 	ImGui::End();
 
 	ImGui::Render();
