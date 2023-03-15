@@ -5,6 +5,7 @@
 
 #include "sceneStructs.h"
 #include "utilities.h"
+#include "cudaUtility.h"
 
 /**
  * Handy-dandy hash function that provides seeds for random number generation.
@@ -24,8 +25,8 @@ __host__ __device__ inline unsigned int utilhash(unsigned int a) {
  * Compute a point at parameter value `t` on ray `r`.
  * Falls slightly short so that it doesn't intersect the object it's hitting.
  */
-__host__ __device__ glm::vec3 getPointOnRay(Ray r, float t) {
-    return r.origin + (t - .0001f) * glm::normalize(r.direction);
+__host__ __device__ inline glm::vec3 getPointOnRay(Ray r, float t) {
+    return r.origin + t * glm::normalize(r.direction);
 }
 
 __host__ __device__ inline Ray makeRay(glm::vec3 ori, glm::vec3 dir) {

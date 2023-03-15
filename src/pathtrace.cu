@@ -12,6 +12,7 @@
 #include "glm/glm.hpp"
 #include "glm/gtx/norm.hpp"
 #include "utilities.h"
+#include "cudaUtility.h"
 #include "pathtrace.h"
 #include "intersections.h"
 #include "interactions.h"
@@ -229,6 +230,7 @@ __global__ void computeIntersections(
 			intersections[path_index].t = t_min;
 			intersections[path_index].materialId = geoms[hit_geom_index].materialid;
 			intersections[path_index].surfaceNormal = normal;
+			intersections[path_index].outside = outside;
 		}
 	}
 }
@@ -262,10 +264,10 @@ __global__ void shadeFakeMaterial(
 			thrust::uniform_real_distribution<float> u01(0, 1);
 
 			Material material = materials[intersection.materialId];
-			glm::vec3 materialColor = material.color;
+			glm::vec3 materialColor = material.albedo;
 
 			// If the material indicates that the object was a light, "light" the ray
-			if (material.emittance > 0.0f) {
+			if (vecElementPositive(material.emittance)) {
 				pathSegments[idx].throughput *= (materialColor * material.emittance);
 			}
 			// Otherwise, do some pseudo-lighting computation. This is actually more
@@ -289,7 +291,7 @@ __global__ void shadeFakeMaterial(
 	}
 }
 
-__global__ void shadeAndSampleSurface(int iter, int num_paths, ShadeableIntersection* shadeableIntersections, PathSegment* pathSegments, Material* materials)
+__global__ void shadeMaterialAndSampleNewRay(int iter, int num_paths, ShadeableIntersection* shadeableIntersections, PathSegment* pathSegments, Material* materials)
 {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	if (idx < num_paths)
@@ -301,7 +303,7 @@ __global__ void shadeAndSampleSurface(int iter, int num_paths, ShadeableIntersec
 			Material material = materials[intersection.materialId];
 			Ray ray = pathSegments[idx].ray;
 			glm::vec3 intersect = getPointOnRay(ray, intersection.t);
-			scatterRay(pathSegments[idx], intersect, intersection.surfaceNormal, material, rng);
+			scatterRay(pathSegments[idx], intersect, intersection.surfaceNormal, intersection.outside, material, rng);
 		}
 		else {
 			pathSegments[idx].throughput = glm::vec3(0.0f);
@@ -458,7 +460,7 @@ void pathtrace(uchar4* pbo, int frame, int iter) {
 		// path segments that have been reshuffled to be contiguous in memory.
 
 		// prev: shadeFakeMaterial
-		shadeAndSampleSurface << <numblocksPathSegmentTracing, blockSize1d >> > (
+		shadeMaterialAndSampleNewRay << <numblocksPathSegmentTracing, blockSize1d >> > (
 			iter,
 			num_paths,
 			dev_intersections,

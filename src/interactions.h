@@ -70,40 +70,52 @@ __host__ __device__
 void scatterRay(
         PathSegment & pathSegment,
         glm::vec3 intersect, // position
-        glm::vec3 normal,
+        glm::vec3 normal, // points in the direction of intersection
+        bool outside, // whether the normal points outside
         const Material &mat,
         thrust::default_random_engine &rng) {
     // TODO: implement this.
     // A basic implementation of pure-diffuse shading will just call the
     // calculateRandomDirectionInHemisphere defined above.
-    if (mat.emittance > 0.0f) {
+    if (vecElementPositive(mat.emittance)) {
         pathSegment.radiance += pathSegment.throughput * mat.emittance;
     }
 
     glm::vec3 inDir = -pathSegment.ray.direction; // point out towards the surface
 
-    if (!mat.hasReflective && !mat.hasRefractive) {
-        // ideally diffuse
+    if (mat.type == Material::Type::Diffuse) {
         glm::vec3 outDir = calculateRandomDirectionInHemisphere(normal, rng);
         pathSegment.ray = makeOffsetedRay(intersect, outDir);
-        pathSegment.throughput *= mat.color;
-        pathSegment.remainingBounces -= 1;
+        pathSegment.throughput *= mat.albedo;
     }
-    else if (mat.hasReflective && !mat.hasRefractive) {
-        // reflect only
+    else if (mat.type == Material::Type::Mirror) {
         glm::vec3 outDir = glm::reflect(-inDir, normal); // 2 * glm::dot(inDir, normal) * normal - inDir
         pathSegment.ray = makeOffsetedRay(intersect, outDir);
-        pathSegment.throughput *= mat.specular.color; // todo: temporary, to change
-        pathSegment.remainingBounces -= 1;
+        pathSegment.throughput *= mat.albedo; // note: either 1.0 or color, both not physically accurate
     }
-    else if (mat.hasReflective && mat.hasRefractive) {
-        // reflect & refract, todo: tmp, maybe do some print out
-        pathSegment.throughput = glm::vec3(0.0f);
-        pathSegment.remainingBounces = 0;
+    else if (mat.type == Material::Type::Dielectric) {
+        float cosTheta = glm::dot(inDir, normal);
+        float IOR = outside ? mat.indexOfRefraction : 1.0 / mat.indexOfRefraction;
+        float fresnelTerm = fresnel(cosTheta, IOR);
+
+        thrust::uniform_real_distribution<float> u01(0, 1);
+        glm::vec3 outDir;
+        
+        if (u01(rng) <= fresnelTerm) {
+            // reflects
+            outDir = glm::reflect(-inDir, normal);
+        }
+        else {
+            // refract
+            outDir = glm::refract(-inDir, normal, IOR);
+            // float sqrtTerm = sqrt(1.0 - IOR * IOR * (1.0 - cosTheta * cosTheta));
+            // outDir = - IOR * (inDir - cosTheta * normal) - sqrtTerm * normal;
+            outDir = glm::normalize(outDir);
+        }
+        
+        pathSegment.ray = makeOffsetedRay(intersect, outDir);
+        pathSegment.throughput *= mat.albedo; // note: either 1.0 or color, both not physically accurate
     }
-    else {
-        // throw error, todo: tmp
-        pathSegment.throughput = glm::vec3(0.0f);
-        pathSegment.remainingBounces = 0;
-    }
+
+    pathSegment.remainingBounces -= 1;
 }
